@@ -1,6 +1,6 @@
 # 交付物输出格式
 
-db-from-files 每次运行产出一套标准交付物，按此布局：
+database-generator-skill 每次运行产出一套标准交付物，按此布局：
 
 ```
 output/
