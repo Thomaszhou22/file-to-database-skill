@@ -7,7 +7,7 @@ Usage:
 Input: the JSON produced by infer_schema.py
 Output: PK candidates per table + FK candidates with confidence and evidence.
 
-Heuristics (mirrors references/methodology.md "外键判定"):
+Heuristics (mirrors references/methodology.md "Foreign-Key Adjudication"):
   >= 0.8  name match (user_id -> users.id) AND 100% value containment -> adopt
   0.5-0.8 value containment but name mismatch -> ask user
   < 0.5   name-only similarity -> ignore (reported)

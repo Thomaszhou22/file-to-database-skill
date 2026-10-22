@@ -1,53 +1,54 @@
-# 非数据文件的入口处理（意图分流）
+# Non-Data File Intake (intent triage)
 
-用户提供的文件不属于 CSV/Excel/JSON/JSONL/TSV 时（PDF、PPTX、DOCX、图片、纯文本、书籍等），**禁止直接进入建库流程，也禁止拒绝服务**。走本分流。
+When the user provides files that are not CSV/Excel/JSON/JSONL/TSV (PDF, PPTX, DOCX, images, plain text, books, etc.), **never enter the build pipeline directly, and never refuse service**. Follow this triage.
 
-## 分流决策
+## Triage Decision
 
 ```
-收到文件（类型识别失败：非结构化数据文件）
+receive file (type detection failed: not a structured data file)
    ↓
-检查上下文是否已说明意图（"把这本书的题建库" = 意图 A）
-   ↓ 意图明确 → 直接走对应路径
-   ↓ 意图不明 → 带选项问一次：
-      "这本书我可以：
-       ① 提取内容建结构化数据库（题库/知识点/公式表）
-       ② 只是阅读、总结、讲解（不需要数据库）
-       ③ 你是不是想发别的文件？
-       要哪个？"
+check whether the context already states the intent
+  ("build a database from this book's exercises" = intent A)
+   ↓ intent clear → take the corresponding path directly
+   ↓ intent unclear → ask once with options:
+      "With this book I can:
+       ① extract the content into a structured database (questions / knowledge points / formulas)
+       ② just read, summarize, or explain it (no database needed)
+       ③ did you mean to send a different file?
+       Which one?"
 ```
 
-**原则**：文件类型决定能力边界，用户意图决定工作流。永远不代替用户猜任务。
+**Principle**: file type determines capability boundaries; user intent determines the workflow. Never guess the task for the user.
 
-## 意图 A：内容结构化 → 建库
+## Intent A: Content Structuring → Database
 
-非结构化文件先"编译"成结构化中间格式，再走标准数据管道：
+Non-structured files are first "compiled" into a structured intermediate format, then fed into the standard data pipeline:
 
-1. **抽取**（LLM 逐段处理，长文档分批）：
-   - 课本/教材 → 章节结构 + 例题（题干/答案/难度）+ 知识点 + 公式
-   - 简历/档案 → 人物实体（姓名/经历/技能）
-   - 报告/论文 → 数据表 + 结论
-   - 抽取结果落成 JSONL（每行一个实体，字段固定），这是 LLM 的活，脚本做不了
-2. **回到标准流程**：JSONL → infer_schema.py 画像 → 关系发现 → 问询点 → 建模 → 建库
-3. 抽取时的歧义照样走问询点模式（"这本书有 3 种题型，Practice/Exam/Mixed，难度字段怎么标？"）
+1. **Extraction** (LLM processes section by section; long documents in batches):
+   - Textbooks → chapter structure + worked examples (statement/answer/difficulty) + knowledge points + formulas
+   - Résumés/records → person entities (name/experience/skills)
+   - Reports/papers → data tables + conclusions
+   - Extraction output lands as JSONL (one entity per line, fixed fields) — this is LLM work that scripts cannot do
+2. **Back to the standard pipeline**: JSONL → infer_schema.py profiling → relation discovery → checkpoints → modeling → database build
+3. Ambiguities during extraction go through the same ask-checkpoint pattern ("this book has 3 question types — Practice/Exam/Mixed; how should the difficulty field be labeled?")
 
-抽取质量门：抽取完成后抽样 10 条人工可核对（附原文页码），用户确认后再建库。
+Extraction quality gate: after extraction, sample 10 items for human verification (with source page numbers); build the database only after user confirmation.
 
-## 意图 B：阅读理解（不建库）
+## Intent B: Reading Comprehension (no database)
 
-直接回答/总结/讲解，本 Skill 除提供"如果之后想建库，随时说"的提示外不介入。**不要**为了用上 Skill 而强行建库。
+Answer/summarize/explain directly; apart from offering "say the word if you ever want a database", this skill does not intervene. **Do not** force a database just to use the skill.
 
-## 意图 C：发错文件
+## Intent C: Wrong File
 
-礼貌确认，不启动任何流程。
+Politely confirm; start no pipeline.
 
-## 文件类型 × 推荐路径速查
+## File Type × Recommended Path Quick Reference
 
-| 文件类型 | 结构化潜力 | 默认问询选项 |
+| File type | Structuring potential | Default options offered |
 |---|---|---|
-| PDF 教材/书 | 高（层级+题+知识点） | 建题库 / 知识点库 / 仅阅读 |
-| PDF 报告 | 中（数据表） | 提取数据表建库 / 仅总结 |
-| DOCX/PPTX | 中（表格部分） | 提取表格建库 / 仅处理文本 |
-| 图片 | 低（需 OCR/视觉模型） | 描述内容 / 用户说明想要什么 |
-| 纯文本/Markdown | 看内容 | 展示理解 / 结构化建库 |
-| 代码文件 | 不是数据 | 建议用户说明目的 |
+| PDF textbook/book | high (hierarchy + questions + knowledge points) | question bank / knowledge-point bank / read only |
+| PDF report | medium (data tables) | extract data tables into a database / summarize only |
+| DOCX/PPTX | medium (table parts) | extract tables into a database / text processing only |
+| Image | low (needs OCR/vision model) | describe the content / ask the user what they want |
+| Plain text/Markdown | depends on content | show understanding / structure into a database |
+| Code file | not data | ask the user for their purpose |

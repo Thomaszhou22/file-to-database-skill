@@ -1,81 +1,81 @@
-# 工程化补充：迁移账本、数据质量、增量导入、权限安全
+# Engineering Hardening: Migration Ledger, Data Quality, Incremental Import, Permissions & Security
 
-> 本文件是 database-generator-skill 的工程级加固层。建库与运行模式遵循前述流程；本文件补齐数据工程师流程中个人场景必需的四个环节。
+> This file is the engineering-grade hardening layer of database-generator-skill. Build and runtime modes follow the flows described elsewhere; this file adds the four stages of the data-engineering workflow that are essential even in personal scenarios.
 
-## 1. 迁移账本（Migration Ledger）
+## 1. Migration Ledger
 
-防止迁移重复执行、乱序执行。
+Prevents migrations from being executed twice or out of order.
 
-**机制**：
-- `migrations/.applied.json` 记录每次已执行的迁移：`{"001_init": {"applied_at": "...", "checksum": "..."}}`
-- 执行迁移前必查账本：已应用且 checksum 一致的跳过；已应用但 checksum 变了的**报错并停下**（有人手改了历史迁移，这是危险信号）
-- 新迁移按序号排队，永远不重写历史迁移文件；改结构 = 新增 `00X_*.sql`
-- 迁移执行完立即做一次 SQLite `VACUUM` / PG `ANALYZE`（小库顺手做）
+**Mechanism**:
+- `migrations/.applied.json` records every executed migration: `{"001_init": {"applied_at": "...", "checksum": "..."}}`
+- Consult the ledger before executing: already applied with a matching checksum → skip; already applied with a changed checksum → **error out and halt** (someone edited a historical migration — a danger signal)
+- New migrations queue by sequence number; never rewrite historical migration files; changing the structure = adding `00X_*.sql`
+- After executing a migration, run SQLite `VACUUM` / PG `ANALYZE` once (cheap for small databases)
 
-**回滚演练**：交付前对最后一个迁移实际执行一次 down + 重新 up，确认回滚脚本不是摆设。演练结果写进 report.md。
+**Rollback rehearsal**: before delivery, actually execute the last migration's down once, then up again, to confirm the rollback script is not decoration. Record the rehearsal result in report.md.
 
-## 2. 数据质量断言（Data Quality Gates）
+## 2. Data Quality Gates
 
-seed 导入后自动跑一组断言，失败则报告并停止后续流程：
+After seeding, automatically run a set of assertions; on failure, report and stop the pipeline:
 
-| 断言 | 默认阈值 |
+| Assertion | Default threshold |
 |---|---|
-| 每表行数 | > 0（seed 后）且与源文件行数一致 |
-| 主键空值率 | = 0 |
-| 关键列空值率 | < 5%（哪些列算"关键"由方法论/用户指定，默认外键列） |
-| 外键引用完整性 | 悬空引用 = 0 |
-| 值域漂移 | 类型画像与导入前画像一致（导入过程没把 text 变成被截断的串） |
+| Row count per table | > 0 (after seed) and consistent with the source file's row count |
+| Primary-key null rate | = 0 |
+| Key-column null rate | < 5% (which columns count as "key" is set by the methodology/user; FK columns by default) |
+| FK referential integrity | dangling references = 0 |
+| Value-domain drift | type profile matches the pre-import profile (the import didn't turn text into truncated strings) |
 
-断言脚本输出 `quality_report.json`；失败项列出具体行样本，问用户"清洗后重导"还是"放宽阈值"。
+The assertion script outputs `quality_report.json`; failed items list concrete row samples and ask the user to choose "clean and re-import" or "relax the threshold".
 
-## 3. 增量导入模式（文件更新了怎么办）
+## 3. Incremental Import Mode (what when files are updated)
 
-用户说"文件更新了 / 有新数据"时，**绝不重建库**，走增量路径：
+When the user says "the file was updated / there's new data", **never rebuild the database** — take the incremental path:
 
 ```
-新文件 → infer_schema.py 新画像
-   → 与旧画像 diff（列增删？类型变化？行数变化？）
-   → 列结构变了 → 按方法论生成新迁移（expand-and-contract）→ 走迁移账本
-   → 只有新行   → UPSERT 导入（按主键判重，已存在则按用户指令更新或跳过）
-   → 导入后重跑数据质量断言 → 汇报：新增 X 行 / 更新 Y 行 / 跳过 Z 行（原因）
+new file → infer_schema.py new profile
+   → diff against the old profile (columns added/removed? type changes? row-count changes?)
+   → column structure changed → generate a new migration per the methodology (expand-and-contract) → through the migration ledger
+   → only new rows      → UPSERT import (deduplicate by primary key; existing rows are updated or skipped per user instruction)
+   → after import, re-run the data quality gates → report: X rows added / Y rows updated / Z rows skipped (with reasons)
 ```
 
-冲突处理默认：主键已存在 → 跳过并记录到 `skipped.csv`（保守默认），用户明确说"以新文件为准"才改为覆盖。
+Conflict handling default: primary key already exists → skip and record to `skipped.csv` (conservative default); overwrite only when the user explicitly says "the new file wins".
 
-## 4. 权限与安全（Permission & Security）
+## 4. Permissions & Security
 
-### 4.1 连接凭证
-- 数据库密码/连接串**永不**写进代码、SQL 文件、报告或聊天——通过环境变量或 `.env`（加入 `.gitignore`）传递
-- Agent 需要连接时，从环境变量读取；缺凭证时提示用户自己设置，不在对话中索要明文密码
-- 交付包（data.db / dump.sql / snapshot.html）发送前检查：**不含凭证、不含未脱敏 PII**（见 4.3）
+### 4.1 Connection Credentials
+- Database passwords/connection strings **never** go into code, SQL files, reports, or chat — they pass through environment variables or `.env` (added to `.gitignore`)
+- When the agent needs a connection, read from environment variables; when credentials are missing, prompt the user to set them up — never request plaintext passwords in conversation
+- Before sending the delivery package (data.db / dump.sql / snapshot.html), check: **contains no credentials and no unmasked PII** (see 4.3)
 
-### 4.2 最小权限
-- SQLite：文件系统权限 0600（仅属主可读写），交付前检查
-- PostgreSQL：Agent 执行日常操作用受限角色（只有目标库的 SELECT/INSERT/UPDATE/DELETE，无 DROP/CREATEROLE）；DDL 与日常操作分离——建库迁移用一个专门的 admin 连接，平时操作用受限连接
-- Supabase：面向公网的项目每张表 ENABLE ROW LEVEL SECURITY；Agent 生成的所有策略显式列出供用户审查
+### 4.2 Least Privilege
+- SQLite: filesystem permission 0600 (owner-only read/write); check before delivery
+- PostgreSQL: day-to-day agent operations use a restricted role (only SELECT/INSERT/UPDATE/DELETE on the target database; no DROP/CREATEROLE); separate DDL from daily operations — builds and migrations use a dedicated admin connection, daily operations use the restricted one
+- Supabase: for public-facing projects, ENABLE ROW LEVEL SECURITY on every table; every policy the agent generates is listed explicitly for user review
 
-### 4.3 PII 处理
-- 画像阶段（infer_schema.py 的语义复核）识别 PII 列：邮箱、电话、身份证、住址、生日
-- 默认动作：**标记而非脱敏**——ERD 和报告中标注"PII: email (users 表)"，交付快照里 PII 列只显示前 3 字符 + 掩码
-- 用户明确要求保留完整 PII 时照做，但报告记录"已按要求包含明文 PII"
-- 库文件（data.db）交付时 PII 不掩码（否则库没法用），但**提醒**接收方该文件含 PII、勿公开转发
+### 4.3 PII Handling
+- The profiling stage (the semantic review of infer_schema.py output) identifies PII columns: emails, phone numbers, national IDs, addresses, birth dates
+- Default action: **flag, don't mask** — the ERD and report annotate "PII: email (users table)"; in delivery snapshots, PII columns show only the first 3 characters plus a mask
+- When the user explicitly asks to keep full PII, comply, but record in the report "plaintext PII included at user request"
+- When delivering the database file itself (data.db), PII is not masked (otherwise the database would be unusable), but **remind** the recipient that the file contains PII and must not be shared publicly
 
-### 4.4 操作审计
-- `audit.log`（追加写，不覆盖）：记录每次写操作的时间、SQL（参数化形式）、影响行数
-- 用户问"这个库都被改过什么"时能完整回放
-- 审计日志本身随交付包一起发（透明度）
+### 4.4 Operation Audit
+- `audit.log` (append-only, never overwritten): records the time, SQL (parameterized form), and affected row count of every write operation
+- When the user asks "what has been done to this database", the full history can be replayed
+- The audit log itself ships with every delivery package (transparency)
 
-### 4.5 SQLite 执行陷阱（实测踩坑，必避）
+### 4.5 SQLite Execution Pitfalls (hit during real testing — mandatory to avoid)
 
-- **每个连接**都必须执行 `PRAGMA foreign_keys=ON`——SQLite 默认不强制外键，不开启则脏数据会静默入库（2026-10-22 全链路实测踩中）
-- **事务边界**：seed 分批 commit——基础表（users/products）导入后先 commit，再导入引用表（orders）；否则 orders 导入失败 rollback 会连带回滚已成功的基础数据
-- 交付前 `chmod 600 data.db`；发送 .db 文件时聊天平台可能拦截二进制，默认打包 zip
+- **Every connection** must execute `PRAGMA foreign_keys=ON` — SQLite does not enforce foreign keys by default; without it, dirty data silently enters the database (hit during the 2026-10-22 end-to-end test)
+- **Transaction boundaries**: seed in committed batches — commit base tables (users/products) after import, then import referencing tables (orders); otherwise an orders-import failure rolls back the already-successful base data with it
+- `chmod 600 data.db` before delivery; chat platforms may block binary .db files when sending — package as zip by default
 
-## 不做什么（诚实边界）
+## What This Skill Does Not Do (honest boundary)
 
-以下事项本 Skill **生成配置和脚本，但不执行**：
+The following are **generated as configs and scripts, but not executed**:
 
-- 生产环境部署与监控告警（生成 cron / systemd / 慢查询日志配置，执行与值守交给人）
-- 压力测试（生成百万行灌数脚本和并发测试脚本，跑批交用户执行）
-- 容量规划（提供估算公式：行宽 × 预估行数 × 增长率，预测需要业务数据支撑）
-- 凭证托管与轮换（凭证在用户手里，Agent 只经环境变量取用）
+- Production deployment and monitoring/alerting (generate cron / systemd / slow-query log configs; execution and watch duty belong to humans)
+- Load testing (generate million-row bulk-insert and concurrency test scripts; batch runs are handed to the user)
+- Capacity planning (provide the estimation formula: row width × estimated rows × growth rate; forecasting needs business data)
+- Credential custody and rotation (credentials stay with the user; the agent only reads them via environment variables)

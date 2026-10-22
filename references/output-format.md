@@ -1,49 +1,49 @@
-# 交付物输出格式
+# Deliverable Output Format
 
-database-generator-skill 每次运行产出一套标准交付物，按此布局：
+database-generator-skill produces a standard set of deliverables on every run, laid out as follows:
 
 ```
 output/
-├── schema.sql          # DDL（表、约束、索引）
+├── schema.sql          # DDL (tables, constraints, indexes)
 ├── erd.md              # Mermaid ERD
-├── seed.py             # 从源文件导入数据（或 seed.sql）
+├── seed.py             # imports data from source files (or seed.sql)
 ├── migrations/
 │   └── 001_init.up.sql / 001_init.down.sql
-└── report.md           # 建模报告（见下）
+└── report.md           # modeling report (see below)
 ```
 
-## schema.sql 要求
+## schema.sql requirements
 
-- 文件头注释：生成时间、目标引擎、源文件清单
-- 每张表一段，表注释写明来源文件
-- 每个索引注明服务的查询：`-- serves Q3: SELECT ... WHERE user_id = ? ORDER BY created_at`
-- 每个外键注明 ON DELETE 选择理由
-- 反范式化的列必须有注释点名服务的查询
+- File-header comment: generation time, target engine, source-file list
+- One section per table; the table comment states the source file
+- Every index annotated with the query it serves: `-- serves Q3: SELECT ... WHERE user_id = ? ORDER BY created_at`
+- Every foreign key annotated with the reason for its ON DELETE choice
+- Every denormalized column must carry a comment naming the query it serves
 
-## erd.md 要求
+## erd.md requirements
 
-Mermaid `erDiagram`，实体间标注基数与外键列。
+Mermaid `erDiagram`, with cardinality and FK columns annotated between entities.
 
-## report.md 模板
+## report.md template
 
 ```markdown
-# 数据库建模报告
+# Database Modeling Report
 
-## 输入
-- 源文件：…（行数、扫描抽样说明）
+## Input
+- Source files: … (row counts, sampling notes)
 
-## 决策记录
-| # | 决策 | 依据（方法论条款） |
-|---|------|--------------------|
+## Decision Record
+| # | Decision | Basis (methodology clause) |
+|---|----------|----------------------------|
 
-## 开放问题（已问用户 / 待确认）
+## Open Questions (asked / pending)
 - …
 
-## 外键判定
-（detect_relations.py 三档结果：adopt / ask_user / ignore）
+## Foreign-Key Adjudication
+(the three tiers from detect_relations.py: adopt / ask_user / ignore)
 
-## 验证结果
-- 约束反向测试：X/X 通过
-- EXPLAIN 索引命中：Q1 ✓ Q2 ✓ …
-- 或：无数据库环境，已按 checklist 人工走查
+## Verification Results
+- Constraint negative tests: X/X passed
+- EXPLAIN index hits: Q1 ✓ Q2 ✓ …
+- Or: no database environment; manual walkthrough per the checklist completed
 ```

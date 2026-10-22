@@ -1,110 +1,107 @@
-# 运行时操作规范（NL ⇄ DB）
+# Runtime Operations (NL ⇄ DB)
 
-建库阶段（staged loop）完成后，Skill 进入**运行模式**：用户用自然语言对数据库发起增删改查，Agent 负责意图识别 → SQL 生成 → 执行 → 自然语言汇报。
+After the build phase (staged loop) completes, the skill enters **runtime mode**: the user issues database creates, reads, updates, and deletes in natural language; the agent handles intent recognition → SQL generation → execution → natural-language reporting.
 
-## 触发规则（Agent 自动判断）
+## Trigger Rules (agent self-detection)
 
-用户消息出现以下任一信号即进入运行模式：
+Enter runtime mode when any of the following signals appears in a user message:
 
-| 信号类型 | 例子 |
+| Signal type | Examples |
 |---|---|
-| 实体+操作词 | "往订单表加一条…" "删掉那个用户" "查一下上周的销售额" |
-| 数据疑问词 | "有多少…？" "哪些…？" "最大的…是？" |
-| 变更动词 + 数据语境 | "更新/修改/标记/取消/停用…" |
-| 隐式引用 | "再看看刚才那个表" "把它删了"（指代上文实体） |
+| Entity + operation word | "Add a row to the orders table…" "Delete that user" "Look up last week's sales" |
+| Data question words | "How many…?" "Which…?" "What's the largest…?" |
+| Mutation verb + data context | "Update / modify / mark / cancel / disable…" |
+| Anaphora | "Look at that table again" "Delete it" (referring to an entity from earlier) |
 
-**不触发**（避免误伤）：纯闲聊、聊"数据库概念"、要求改 schema 结构（那是建库模式/迁移模式，走方法论）。
+**Do not trigger** (avoid false positives): casual chat, discussing "database concepts", requests to change the schema structure (that's build/migration mode — follow the methodology).
 
-**消歧优先级**：当前对话已操作的库 > 项目目录里的库 > 问用户"哪个库"。
+**Disambiguation priority**: the database already operated on in this conversation > a database in the project directory > ask the user "which database".
 
-## 运行时循环（每次请求）
+## Runtime Loop (per request)
 
 ```
-用户自然语言
+User natural language
    │
    ▼
-1. 意图分类 → SELECT / INSERT / UPDATE / DELETE / DDL / 统计 / 不明确
-   │  不明确 → 反问一次（"你是想查数据还是改数据？"），不瞎猜
+1. Intent classification → SELECT / INSERT / UPDATE / DELETE / DDL / aggregate / unclear
+   │  unclear → ask once ("do you want to query or modify?"); never guess
    ▼
-2. 加载 schema 上下文（首次必做：读 schema.sql / \d 输出 / PRAGMA table_info）
-   │  缓存到会话；表结构变了要重新加载
+2. Load schema context (mandatory on first use: read schema.sql / \d output / PRAGMA table_info)
+   │  cache for the session; reload when the schema changes
    ▼
-3. 生成 SQL（规则见下）
+3. Generate SQL (rules below)
    ▼
-4. 预检 + 执行（安全规则见下）
+4. Pre-check + execute (safety rules below)
    ▼
-5. 自然语言汇报（模板见下）
+5. Natural-language report (templates below)
 ```
 
-## SQL 生成规则
+## SQL Generation Rules
 
-- **写 SQL 前先看 schema**：列名、类型、约束以 schema 为准，禁止凭记忆猜列名
-- **参数化**：用户值永远不拼进 SQL 字符串（防注入 + 类型错误）；Agent 场景下生成前先声明"这些值来自用户输入"
-- **UPDATE/DELETE 必带 WHERE**：生成后自查——没有 WHERE 的变更语句一律拒绝执行并报告
-- **模糊条件显式化**："最近的订单" → 先确认排序字段（created_at）和时间窗口，向用户复述一遍再执行
-- **聚合需求映射**："有多少"→COUNT、"平均"→AVG、"排名前几"→ORDER BY+LIMIT、"按…分类"→GROUP BY
-- **JOIN 依据**：只按 schema 里真实存在的外键 JOIN，不按名称相似猜
+- **Read the schema before writing SQL**: column names, types, and constraints come from the schema; never guess column names from memory
+- **Parameterization**: user values are never concatenated into SQL strings (prevents injection + type errors); in the agent context, declare "these values come from user input" before generating
+- **UPDATE/DELETE must carry WHERE**: self-check after generation — a mutation without WHERE is refused execution and reported
+- **Make fuzzy conditions explicit**: "recent orders" → first confirm the sort column (created_at) and time window, restate to the user, then execute
+- **Aggregate mapping**: "how many" → COUNT, "average" → AVG, "top N" → ORDER BY + LIMIT, "by …" → GROUP BY
+- **JOIN basis**: JOIN only on foreign keys that actually exist in the schema; never guess by name similarity
 
-## 安全规则（必须全部满足才能执行）
+## Safety Rules (all must hold before execution)
 
-| 操作 | 门槛 |
+| Operation | Gate |
 |---|---|
-| SELECT | 直接执行 |
-| INSERT | 直接执行；违反约束时把数据库报错翻译成人话 |
-| UPDATE / DELETE | ① 先跑同条件 SELECT 展示受影响行数 ② ≤ 5 行直接执行 ③ > 5 行或无 WHERE → 复述条件，等用户确认 |
-| DROP / TRUNCATE / ALTER | 一律确认；ALTER 走方法论的 expand-and-contract 迁移流程 |
-| 批量操作 | 分批执行，报告进度 |
+| SELECT | Execute directly |
+| INSERT | Execute directly; when a constraint is violated, translate the database error into plain language |
+| UPDATE / DELETE | ① Run the same-condition SELECT first to show affected row count ② ≤ 5 rows: execute directly ③ > 5 rows or no WHERE: restate the conditions and wait for user confirmation |
+| DROP / TRUNCATE / ALTER | Always confirm; ALTER follows the methodology's expand-and-contract migration flow |
+| Bulk operations | Execute in batches; report progress |
 
-**报错翻译表**（数据库错误 → 人话）：
+**Error translation table** (database error → plain language):
 
-- `duplicate key value violates unique constraint` → "这条记录已经存在了（X 列的值 Y 重复）"
-- `violates foreign key constraint` → "它引用的那条记录不存在 / 还有别的数据依赖着它"
-- `violates not-null constraint` → "X 列是必填的，你没提供"
-- `check constraint` → "X 的值 Y 超出了允许范围"
+- `duplicate key value violates unique constraint` → "This record already exists (value Y of column X is duplicated)"
+- `violates foreign key constraint` → "The record it references does not exist / other data still depends on it"
+- `violates not-null constraint` → "Column X is required; you didn't provide it"
+- `check constraint` → "The value Y of X is outside the allowed range"
 
-## 自然语言汇报模板
+## Natural-Language Report Templates
 
-**查询**：先给结论，再给数据，最后给线索。
+**Query**: conclusion first, then data, then a lead for next steps.
 
-> 查到了：上个月一共 34 笔订单，总额 ¥4,520。
-> | 日期 | 金额 | 状态 | …
-> （完整结果已存到 output/ 里，需要导出 CSV 说一声）
+> Found: 34 orders last month, totaling ¥4,520.
+> | Date | Amount | Status | …
+> (Full results saved to output/; say the word if you want a CSV export.)
 
-**变更**：说清楚改了什么、影响几行、可否撤销。
+**Mutation**: state exactly what changed, how many rows, and whether it's reversible.
 
-> 已添加 1 条订阅（Netflix，¥65/月，每月 5 号扣费）。
-> 已删除 3 条过期订阅记录。这个操作不可撤销——删除前备份在 /tmp/backup_xxx.csv。
+> Added 1 subscription (Netflix, ¥65/month, billed on the 5th).
+> Deleted 3 expired subscription records. This operation is irreversible — pre-deletion backup is at /tmp/backup_xxx.csv.
 
-**空结果**：不要只说"没查到"，主动提供下一步。
+**Empty result**: never just say "nothing found"; proactively offer next steps.
 
-> 没有找到"上周"的订单。要不要把范围放宽到整个十月？或者你说的"上周"是 10/13-10/19？
+> No orders found for "last week". Widen the range to all of October? Or did you mean 10/13–10/19 by "last week"?
 
-**模糊请求**：复述理解 + 列出可选项。
+**Ambiguous request**: restate your understanding + list the options.
 
-> 你说"整理一下用户表"——我理解可能是：
-> ① 查看当前结构 ② 清理无效用户 ③ 导出备份。是哪个？
+> By "tidy up the users table" — I understand this could mean:
+> ① inspect the current structure ② clean up invalid users ③ export a backup. Which one?
 
-## 变更后可视化交付（每次修改库后自动执行）
+## Post-Change Visualization Delivery (run automatically after every modification)
 
-任何写操作（INSERT/UPDATE/DELETE/DDL）完成后，除文字汇报外，自动生成交付包发给用户：
+After any write operation (INSERT/UPDATE/DELETE/DDL), in addition to the text report, automatically generate a delivery package for the user:
 
-| 交付物 | 内容 | 生成方式 |
+| Deliverable | Content | How it's generated |
 |---|---|---|
-| 库本体 | `data.db`（SQLite 默认）或 `dump.sql`（PostgreSQL） | SQLite 天然单文件；PG 用 pg_dump |
-| 结构图 | Mermaid ERD + mermaid.live 在线渲染链接 | 从 schema 生成 erDiagram，URL-encode 进 `https://mermaid.live/view#<encoded>` |
-| 数据快照 | `snapshot.html`：每表 top 20 行 + 总行数 + 关键聚合 | 脚本导出自包含 HTML（内联 CSS，浏览器直接开） |
+| Database itself | `data.db` (SQLite default) or `dump.sql` (PostgreSQL) | SQLite is naturally a single file; PG uses pg_dump |
+| Structure diagram | Mermaid ERD + mermaid.live online rendering link | Generate erDiagram from the schema, URL-encode into `https://mermaid.live/view#<encoded>` |
+| Data snapshot | `snapshot.html`: top 20 rows per table + total row counts + key aggregates | Script exports a self-contained HTML (inline CSS, opens directly in a browser) |
 
-**引擎选择建议**：个人/小团队场景建库阶段默认 SQLite（零安装、单文件、可直接发送）；用户点名 Postgres/Supabase 或需要多用户并发时才切换，切换后交付物改为 pg_dump 导出 + 快照。
+**Engine choice guidance**: for personal/small-team scenarios default to SQLite at build time (zero install, single file, directly sendable); switch only when the user explicitly asks for Postgres/Supabase or needs multi-user concurrency — after switching, the deliverable becomes a pg_dump export + snapshot.
 
-**频率控制**：连续多次小修改时合并为最后一次交付（中间变更只文字汇报），避免文件轰炸。用户说"发我一份"时无条件生成交付包。
+**Frequency control**: for a run of consecutive small modifications, merge into one final delivery (intermediate changes get text reports only) to avoid file spam. When the user says "send me a copy", generate the package unconditionally.
 
-**交互版快照（可选件，非默认）**：静态 snapshot 之外可生成 sql.js 交互版 HTML（内嵌 data.db，浏览器内可自助查询）——但仅限**只读探索**，禁用写操作。理由：静态 HTML 无同步通道，用户在里面改的只是浏览器内存副本，既回不到 data.db 也传不回 Agent，会制造"改了但没生效"的幻觉。数据变更的唯一通道始终是：用户对 Agent 说 → Agent 改库 → 重新交付。默认交付包不含交互版，用户明确要了才生成。
+**Interactive snapshot (optional, not default)**: in addition to the static snapshot, an sql.js interactive HTML can be generated (data.db embedded, self-service queries in the browser) — but **read-only exploration only**, with write operations disabled. Rationale: a static HTML has no sync channel; anything the user edits there is only an in-browser memory copy — it never reaches data.db nor the agent — creating a "edited but nothing happened" illusion. The only channel for data changes remains: user tells the agent → agent modifies the database → re-deliver. The default package excludes the interactive version; generate it only when the user explicitly asks.
 
-**汇报模板追加一句**：
-> 已把最新的库文件、ERD 图和数据快照发给你了（3 张表 / 27 行）。用 DB Browser for SQLite 打开 data.db 可以直接看。
+## Session Memory
 
-## 会话记忆
-
-- 首次交互时缓存 schema 摘要（表清单 + 列名 + 外键），后续不重复读取
-- 记录本会话执行过的变更历史，用户说"撤销刚才那个"时能定位
-- 用户纠正过一次的偏好（比如"时间一律用北京时间显示"）记入会话上下文
+- Cache the schema summary on first interaction (table list + column names + foreign keys); do not re-read afterwards
+- Record the change history executed in this session so "undo what I just did" can be located
+- Preferences the user corrected once (e.g. "always show times in Beijing time") go into the session context

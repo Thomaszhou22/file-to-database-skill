@@ -1,19 +1,19 @@
-# 其他引擎的差异（PostgreSQL 之外的默认值）
+# Other-Engine Differences (defaults beyond PostgreSQL)
 
-| 关注点 | MySQL 8 | SQLite | MongoDB |
+| Concern | MySQL 8 | SQLite | MongoDB |
 |---|---|---|---|
-| 主键 | `BIGINT AUTO_INCREMENT` 或 `CHAR(36)` UUID | `INTEGER PRIMARY KEY AUTOINCREMENT` | `_id: ObjectId` |
-| 字符串 | `VARCHAR(255)` 起步（MySQL 的 text 不能无默认值索引） | `TEXT` | string |
-| 时间 | `DATETIME`（存 UTC，应用层转换） | `TEXT` ISO-8601 或 unix epoch int | date |
-| 金额 | `DECIMAL(12,2)` | `NUMERIC` / 存整数的分 | 用 Decimal128，禁用 double |
-| 布尔 | `TINYINT(1)`（MySQL 无真 boolean） | `INTEGER` 0/1 | bool |
-| 枚举 | `ENUM(...)`（或 VARCHAR+CHECK） | `TEXT + CHECK` | 无 schema，靠应用层校验 |
-| 外键 | InnoDB 支持，需显式声明 | 需 `PRAGMA foreign_keys=ON` | 手动维护（或 lookup pattern） |
-| 索引外键列 | MySQL 自动给 FK 建索引 | 手动 | 手动 |
-| 迁移工具约定 | 裸 SQL / Alembic | 裸 SQL / Drizzle | mongoose migrations |
+| Primary key | `BIGINT AUTO_INCREMENT` or `CHAR(36)` UUID | `INTEGER PRIMARY KEY AUTOINCREMENT` | `_id: ObjectId` |
+| Strings | start with `VARCHAR(255)` (MySQL TEXT columns cannot be indexed without a prefix default) | `TEXT` | string |
+| Time | `DATETIME` (store UTC; convert in the application) | `TEXT` ISO-8601 or unix epoch int | date |
+| Money | `DECIMAL(12,2)` | `NUMERIC` / integer cents | use Decimal128; never double |
+| Boolean | `TINYINT(1)` (MySQL has no true boolean) | `INTEGER` 0/1 | bool |
+| Enum | `ENUM(...)` (or VARCHAR+CHECK) | `TEXT + CHECK` | no schema; application-level validation |
+| Foreign keys | InnoDB supports them; must be declared explicitly | requires `PRAGMA foreign_keys=ON` | maintained manually (or lookup pattern) |
+| Indexing FK columns | MySQL auto-indexes FKs | manual | manual |
+| Migration conventions | raw SQL / Alembic | raw SQL / Drizzle | mongoose migrations |
 
-## Supabase（= PostgreSQL + 约定）
+## Supabase (= PostgreSQL + conventions)
 
-- 用 Supabase migrations 目录管理 DDL，不用 dashboard 手点
-- RLS：面向公网的项目，每张表默认 `ENABLE ROW LEVEL SECURITY`，策略显式写
-- `auth.users` 是保留表，业务用户表用 `user_id uuid references auth.users(id)` 关联，主键不叫 id 时注意与 Supabase 客户端约定
+- Manage DDL through the Supabase migrations directory, not dashboard clicks
+- RLS: for public-facing projects, `ENABLE ROW LEVEL SECURITY` on every table by default; write policies explicitly
+- `auth.users` is a reserved table; link business user tables via `user_id uuid references auth.users(id)`; when the primary key isn't named `id`, mind the Supabase client conventions
