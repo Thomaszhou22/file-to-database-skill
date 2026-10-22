@@ -2,7 +2,7 @@
 
 ![License](https://img.shields.io/badge/license-MIT-blue)
 ![Version](https://img.shields.io/badge/version-1.0.0-green)
-![Platform](https://img.shields.io/badge/platform-OpenClaw%20%7C%20Claude%20Code%20%7C%20Cursor-purple)
+![Platform](https://img.shields.io/badge/platform-OpenClaw%20%7C%20Claude%20Code%20%7C%20Cursor%20%7C%20Codex%20%7C%20Gemini%20CLI-purple)
 ![ClawHub](https://img.shields.io/badge/ClawHub-draft-yellow)
 
 **[English](README.md)** | **中文**
@@ -164,7 +164,9 @@ database-generator-skill/
 | OpenClaw | ✅ 主要目标 |
 | Claude Code | ✅ 放入 `~/.claude/skills/` |
 | Cursor | ✅ 作为 Project Rule + 终端跑脚本 |
-| 任意 LLM Agent | ✅ 脚本可独立运行 |
+| Codex CLI | ✅ 放入 `~/.codex/skills/` 或通过 AGENTS.md 引用 |
+| Gemini CLI | ✅ 在 GEMINI.md 中引用 SKILL.md；脚本可独立运行 |
+| 任意 LLM Agent | ✅ 脚本可独立运行（任何能读文件、跑 Python 的 Agent） |
 
 ## 许可
 
