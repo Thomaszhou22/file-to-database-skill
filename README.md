@@ -1,4 +1,4 @@
-# 🗄️ DB from Files
+# 🗄️ File to Database
 
 ![License](https://img.shields.io/badge/license-MIT-blue)
 ![Version](https://img.shields.io/badge/version-1.0.0-green)
@@ -11,7 +11,8 @@ Turn raw data files (CSV / Excel / JSON / JSONL / TSV) into a validated database
 
 **7 reference docs** encode the full engineering loop. **6 file formats** supported. **0 dependencies** (stdlib Python only; openpyxl optional for xlsx).
 
-**The problem:** "Send the files to Cursor and it builds a database" works once, but every new project means re-explaining your design rules, the agent guesses foreign keys and indexes differently each time, and after the DDL you're on your own. DB from Files fixes all three: your design methodology lives in `references/methodology.md` (swap it to change the design style), every generated schema follows it verbatim, and the runtime mode keeps the agent as the database's natural-language operator afterwards.
+**The problem:** "Send the files to Cursor and it builds a database" works once, but every new project means re-explaining your design rules, the agent guesses foreign keys and indexes differently each time, and after the DDL you're on your own. File to Database fixes all three: your design methodology lives in `references/methodology.md` (swap it to change the design style), every generated schema follows it verbatim, and the runtime mode keeps the agent as the database's natural-language operator afterwards.
+
 
 ## Table of Contents
 

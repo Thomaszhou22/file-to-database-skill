@@ -1,4 +1,4 @@
-# 🗄️ DB from Files
+# 🗄️ File to Database
 
 ![License](https://img.shields.io/badge/license-MIT-blue)
 ![Version](https://img.shields.io/badge/version-1.0.0-green)
@@ -11,7 +11,7 @@
 
 **7 份参考文档**固化完整工程循环。**6 种文件格式**支持。**0 依赖**（纯 Python 标准库；xlsx 可选装 openpyxl）。
 
-**解决的痛点**："把文件发给 Cursor 让它建库"只能用一次——每个新项目都要重新交代设计规则，Agent 每次猜的外键和索引都不一样，而且 DDL 生成完就不管了。DB from Files 三个问题全解：设计方法论固化在 `references/methodology.md`（换文件即换风格），每次生成的 schema 严格遵循它，运行模式让 Agent 在建库之后继续当数据库的自然语言操作员。
+**解决的痛点**："把文件发给 Cursor 让它建库"只能用一次——每个新项目都要重新交代设计规则，Agent 每次猜的外键和索引都不一样，而且 DDL 生成完就不管了。File to Database 三个问题全解：设计方法论固化在 `references/methodology.md`（换文件即换风格），每次生成的 schema 严格遵循它，运行模式让 Agent 在建库之后继续当数据库的自然语言操作员。
 
 ## 目录
 
