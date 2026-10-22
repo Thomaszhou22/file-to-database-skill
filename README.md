@@ -169,7 +169,3 @@ database-generator-skill/
 ## License
 
 MIT
-
-## Tags
-
-`database` `schema-design` `csv-to-sql` `data-modeling` `agent-skill` `sql` `sqlite` `postgresql` `supabase` `data-engineering` `natural-language-interface` `methodology` `openclaw` `claude-skills`

@@ -169,7 +169,3 @@ database-generator-skill/
 ## 许可
 
 MIT
-
-## 标签
-
-`数据库` `schema设计` `CSV转SQL` `数据建模` `agent-skill` `SQL` `SQLite` `PostgreSQL` `Supabase` `数据工程` `自然语言交互` `方法论` `openclaw` `claude-skills`
