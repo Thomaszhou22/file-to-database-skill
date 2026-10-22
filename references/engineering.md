@@ -1,6 +1,6 @@
 # Engineering Hardening: Migration Ledger, Data Quality, Incremental Import, Permissions & Security
 
-> This file is the engineering-grade hardening layer of database-generator-skill. Build and runtime modes follow the flows described elsewhere; this file adds the four stages of the data-engineering workflow that are essential even in personal scenarios.
+> This file is the engineering-grade hardening layer of file-to-database-skill. Build and runtime modes follow the flows described elsewhere; this file adds the four stages of the data-engineering workflow that are essential even in personal scenarios.
 
 ## 1. Migration Ledger
 

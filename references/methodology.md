@@ -1,6 +1,6 @@
 # Database Design Methodology (pluggable)
 
-> This file is the methodological core of database-generator-skill. Replace this file to switch the entire design style.
+> This file is the methodological core of file-to-database-skill. Replace this file to switch the entire design style.
 > The current version is adapted from Cursor community best practices (staged loop + query-driven indexing).
 
 ## Core Principles

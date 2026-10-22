@@ -117,11 +117,11 @@ Skill 不止于 DDL。库建好之后，Agent 成为它的**自然语言操作�
 
 ```bash
 # ClawHub
-clawhub install database-generator-skill
+clawhub install file-to-database-skill
 
 # 或从源码
-git clone https://github.com/Thomaszhou22/database-generator-skill.git
-cp -r database-generator-skill ~/.openclaw/skills/
+git clone https://github.com/Thomaszhou22/file-to-database-skill.git
+cp -r file-to-database-skill ~/.openclaw/skills/
 ```
 
 需要 Python 3.8+（纯标准库）。`.xlsx` 支持可选装 `openpyxl`。
@@ -143,7 +143,7 @@ python3 scripts/detect_relations.py --profiles profiles.json --out relations.jso
 ## 文件结构
 
 ```
-database-generator-skill/
+file-to-database-skill/
 ├── SKILL.md                        # 入口：分阶段循环 + 运行模式 + 工程加固
 ├── references/
 │   ├── methodology.md              # ⭐ 可插拔设计方法论 + 问询点模式

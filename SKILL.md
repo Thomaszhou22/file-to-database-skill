@@ -1,5 +1,5 @@
 ---
-name: database-generator-skill
+name: file-to-database-skill
 version: 1.0.0
 description: "Use when the user wants to build a database from data files (CSV/Excel/JSON/JSONL/TSV), design a schema from raw data, or turn flat files into tables — AND when the user later talks to that database in natural language (add, query, update, delete records; 'how many...'; 'show me...'). Scans files, infers column types, detects candidate foreign keys, applies the methodology in references/methodology.md to produce DDL, ERD, seed scripts, and validation; runtime operations follow references/operations.md (intent → SQL → safe execution → natural-language report). Do NOT use for ORM code generation or pure database concept discussions."
 ---

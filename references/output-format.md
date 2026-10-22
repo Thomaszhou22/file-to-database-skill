@@ -1,6 +1,6 @@
 # Deliverable Output Format
 
-database-generator-skill produces a standard set of deliverables on every run, laid out as follows:
+file-to-database-skill produces a standard set of deliverables on every run, laid out as follows:
 
 ```
 output/

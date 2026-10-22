@@ -117,11 +117,11 @@ Full pipeline battle-tested with synthetic data across three formats (CSV / JSON
 
 ```bash
 # ClawHub
-clawhub install database-generator-skill
+clawhub install file-to-database-skill
 
 # Or from source
-git clone https://github.com/Thomaszhou22/database-generator-skill.git
-cp -r database-generator-skill ~/.openclaw/skills/
+git clone https://github.com/Thomaszhou22/file-to-database-skill.git
+cp -r file-to-database-skill ~/.openclaw/skills/
 ```
 
 Requires Python 3.8+ (stdlib only). `openpyxl` optional for `.xlsx`.
@@ -143,7 +143,7 @@ Then the agent (OpenClaw / Claude Code / Cursor) takes over: modeling, DDL, ERD,
 ## Files
 
 ```
-database-generator-skill/
+file-to-database-skill/
 ├── SKILL.md                        # entry point: staged loop + runtime mode + hardening
 ├── references/
 │   ├── methodology.md              # ⭐ pluggable design methodology + ask-checkpoint pattern
