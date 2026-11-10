@@ -10,26 +10,26 @@ Turn data files (CSV / Excel / JSON / JSONL / TSV) into a validated database:
 **scan → infer → model → DDL → verify**, following the pluggable methodology in `references/methodology.md` throughout.
 
 
-## Onboarding（首次使用）
+## Onboarding (First Use)
 
-当用户第一次触发本 skill 且 `memory/file_to_database_state.json` 不存在时，执行一次性引导：
+When the user first triggers this skill and `memory/file_to_database_state.json` doesn't exist, run a one-time setup:
 
-1. **介绍能力**（一句话）：_"我可以把 CSV/Excel/JSON 数据文件直接变成经过验证的数据库，之后还能用自然语言操作它。"_
+1. **Introduce capability** (one sentence): _"I can turn CSV/Excel/JSON data files into a validated database, then let you operate it in natural language."_
 
-2. **快速配置：**
+2. **Quick configuration:**
 
-1. **默认数据库引擎**（默认：SQLite）
-   - SQLite（零安装，单文件，个人项目推荐）
-   - PostgreSQL（多用户/云端部署）
-2. **是否启用运行时自然语言操作**（默认：是）
-   - 是（建库后可用自然语言增删改查）
-   - 否（仅建库，不进入运行模式）
+1. **Default database engine**(Default: SQLite)
+   - SQLite(zero-install, single-file, personal projectsrecommended)
+   - PostgreSQL(Multi-user / cloud deployment)
+2. **Enable runtime natural-language operations**(Default: Yes)
+   - Yes (CRUD in natural language after database is built)
+   - No (build database only, skip runtime mode)
 
-3. **写入初始状态文件** `memory/file_to_database_state.json`（JSON 格式，含 `onboarded: true` 和时间戳）
+3. **Write initial state file** `memory/file_to_database_state.json`(JSON format, with `onboarded: true` and timestamp)
 
-4. **确认完成**：_"设置完成！以后直接用就行。随时可以说'reset settings'重新配置。"_
+4. **Confirm completion**: _"Setup done! Just use it from now on. Say 'reset settings' anytime to reconfigure."
 
-**Onboarding 只执行一次**，后续每次激活直接读取状态文件。用户说 "reset settings" 时删除状态文件重新引导。
+**Onboarding runs exactly once.** Subsequent activations read the state file directly. When the user says "reset settings", delete the state file and re-run setup.
 
 ---
 
